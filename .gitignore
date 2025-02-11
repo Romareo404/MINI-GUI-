@@ -1,171 +1,123 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
+from tkinter import messagebox, ttk as tk_tabs
+import subprocess
+import os
+import openpyxl
+from datetime import datetime
 
-# C extensions
-*.so
+# Function to get MAC address
+def get_mac_address():
+    progress_label.config(text="Getting MAC Address...")
+    progress_bar.start()
+    try:
+        result = subprocess.run(['getmac'], capture_output=True, text=True)
+        return result.stdout.strip() or "MAC Address Not Found"
+    except Exception as e:
+        return f"Error: {str(e)}"
+    finally:
+        progress_bar.stop()
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+# Function to get serial number
+def get_serial_number():
+    progress_label.config(text="Getting Serial Number...")
+    progress_bar.start()
+    try:
+        result = subprocess.run(['wmic', 'bios', 'get', 'serialnumber'], capture_output=True, text=True)
+        return result.stdout.splitlines()[1].strip() or "Serial Number Not Found"
+    except Exception as e:
+        return f"Error: {str(e)}"
+    finally:
+        progress_bar.stop()
 
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
+# Function to get computer name
+def get_computer_name():
+    progress_label.config(text="Getting Computer Name...")
+    progress_bar.start()
+    try:
+        return os.environ['COMPUTERNAME']
+    except Exception as e:
+        return f"Error: {str(e)}"
+    finally:
+        progress_bar.stop()
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+# Function to save data to Excel
+def save_to_excel(data):
+    try:
+        current_directory = os.getcwd()
+        file_path = os.path.join(current_directory, 'Device_Info.xlsx')
+        
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Device Info"
+        
+        headers = ['MAC Address', 'Serial Number', 'Computer Name', 'Make and Model', 'Join Status', 'Windows Version', 'Date Collected']
+        ws.append(headers)
+        ws.append(data + [datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
+        
+        wb.save(file_path)
+        messagebox.showinfo("Success", f"Data saved to {file_path}")
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to save data: {str(e)}")
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
+# Function to collect data based on selections
+def collect_data():
+    data = []
+    try:
+        if mac_var.get():
+            data.append(get_mac_address())
+        if serial_var.get():
+            data.append(get_serial_number())
+        if name_var.get():
+            data.append(get_computer_name())
 
-# Translations
-*.mo
-*.pot
+        if data:
+            save_to_excel(data)
+        else:
+            messagebox.showwarning("No Selection", "Please select at least one option to pull.")
+    except Exception as e:
+        messagebox.showerror("Error", f"An error occurred: {str(e)}")
+    finally:
+        progress_label.config(text="Ready")
 
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
+# Creating the main window with Ttkbootstrap
+root = ttk.Window(themename="solar")
+root.title("System Info Retriever")
+root.geometry("600x400")
+root.configure(bg="black")
 
-# Flask stuff:
-instance/
-.webassets-cache
+# Creating Tabs
+tab_control = tk_tabs.Notebook(root)
+basic_tab = ttk.Frame(tab_control, style="TFrame")
+bluetally_tab = ttk.Frame(tab_control, style="TFrame")
+endpoint_tab = ttk.Frame(tab_control, style="TFrame")
 
-# Scrapy stuff:
-.scrapy
+tab_control.add(basic_tab, text="Basic Retrieval")
+tab_control.add(bluetally_tab, text="BlueTally")
+tab_control.add(endpoint_tab, text="Endpoint Manager")
+tab_control.pack(expand=1, fill='both')
 
-# Sphinx documentation
-docs/_build/
+# Basic Retrieval Tab Layout
+mac_var = ttk.BooleanVar()
+serial_var = ttk.BooleanVar()
+name_var = ttk.BooleanVar()
 
-# PyBuilder
-.pybuilder/
-target/
+ttk.Checkbutton(basic_tab, text="MAC Address", variable=mac_var, bootstyle="round-toggle").pack(anchor='w', padx=10, pady=5)
+ttk.Checkbutton(basic_tab, text="Serial Number", variable=serial_var, bootstyle="round-toggle").pack(anchor='w', padx=10, pady=5)
+ttk.Checkbutton(basic_tab, text="Computer Name", variable=name_var, bootstyle="round-toggle").pack(anchor='w', padx=10, pady=5)
 
-# Jupyter Notebook
-.ipynb_checkpoints
+ttk.Button(basic_tab, text="Pull Data", command=collect_data, bootstyle="success-outline").pack(pady=20)
 
-# IPython
-profile_default/
-ipython_config.py
+# Progress bar and label to indicate status
+progress_label = ttk.Label(basic_tab, text="Ready", bootstyle="light")
+progress_label.pack(pady=5)
+progress_bar = ttk.Progressbar(basic_tab, mode='indeterminate')
+progress_bar.pack(pady=10, fill='x')
 
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
+# Placeholder for BlueTally Tab (will be developed later)
+ttk.Label(bluetally_tab, text="BlueTally Integration Coming Soon...", bootstyle="info").pack(pady=20)
 
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#Pipfile.lock
+# Placeholder for Endpoint Manager Tab
+ttk.Label(endpoint_tab, text="Endpoint Manager Integration Coming Soon...", bootstyle="info").pack(pady=20)
 
-# UV
-#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#uv.lock
-
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
-
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#pdm.lock
-#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
-#   in version control.
-#   https://pdm.fming.dev/latest/usage/project/#working-with-version-control
-.pdm.toml
-.pdm-python
-.pdm-build/
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
-
-# PyPI configuration file
-.pypirc
+root.mainloop()
